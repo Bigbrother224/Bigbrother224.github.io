@@ -140,6 +140,81 @@ h1, h2, h3, h4, p { margin: 0; }
   transform: rotate(-0.35deg);
 }
 .receipt > * { position: relative; z-index: 1; }
+.receipt__creases {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.receipt__crease {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.receipt__crease--left {
+  top: 2%;
+  bottom: 2.5%;
+  left: 0;
+  width: 34px;
+  background: linear-gradient(
+    101deg,
+    rgba(54, 47, 36, 0.105) 0%,
+    rgba(54, 47, 36, 0.025) 22%,
+    transparent 38%,
+    rgba(255, 255, 255, 0.24) 69%,
+    rgba(73, 65, 50, 0.035) 83%,
+    transparent 100%
+  );
+  clip-path: polygon(0 0, 100% 1.5%, 88% 99%, 0 100%);
+  animation: paper-fold-left 17s ease-in-out infinite alternate;
+}
+.receipt__crease--right {
+  top: 2%;
+  right: 0;
+  bottom: 2.5%;
+  width: 31px;
+  background: linear-gradient(
+    259deg,
+    rgba(54, 47, 36, 0.095) 0%,
+    rgba(54, 47, 36, 0.025) 22%,
+    transparent 39%,
+    rgba(255, 255, 255, 0.22) 68%,
+    rgba(73, 65, 50, 0.035) 84%,
+    transparent 100%
+  );
+  clip-path: polygon(100% 0, 0 2%, 11% 98%, 100% 100%);
+  animation: paper-fold-right 19s ease-in-out infinite alternate;
+}
+.receipt__crease--center {
+  top: 48%;
+  left: 13%;
+  width: 75%;
+  height: 42px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(67, 58, 45, 0.045) 35%,
+    rgba(255, 255, 255, 0.21) 51%,
+    rgba(67, 58, 45, 0.025) 62%,
+    transparent 100%
+  );
+  clip-path: polygon(0 18%, 100% 0, 98% 78%, 2% 100%);
+  animation: paper-fold-center 21s ease-in-out infinite alternate;
+}
+@keyframes paper-fold-left {
+  from { opacity: 0.25; transform: translateX(0) skewY(-0.08deg); }
+  to { opacity: 0.39; transform: translateX(0.5px) skewY(0.08deg); }
+}
+@keyframes paper-fold-right {
+  from { opacity: 0.23; transform: translateX(0) skewY(0.06deg); }
+  to { opacity: 0.36; transform: translateX(-0.5px) skewY(-0.08deg); }
+}
+@keyframes paper-fold-center {
+  from { opacity: 0.12; transform: translateY(-0.5px) rotate(-0.1deg); }
+  to { opacity: 0.25; transform: translateY(0.5px) rotate(0.1deg); }
+}
 
 .receipt__header { text-align: center; }
 .receipt__brand {
@@ -544,10 +619,12 @@ a.receipt-item__action:hover { color: var(--ink); text-decoration: underline; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .receipt__crease { animation: none; }
 }
 @media print {
   body { background: #fff; }
   .ground-texture { display: none; }
+  .receipt__creases { display: none; }
   .receipt {
     width: 100%;
     max-width: none;
