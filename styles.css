@@ -140,100 +140,6 @@ h1, h2, h3, h4, p { margin: 0; }
   transform: rotate(-0.35deg);
 }
 .receipt > * { position: relative; z-index: 1; }
-.receipt__creases {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.receipt__crease {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-.receipt__crease--left {
-  top: 2%;
-  bottom: 2.5%;
-  left: 0;
-  width: 34px;
-  background:
-    linear-gradient(
-      101deg,
-      rgba(54, 47, 36, 0.16) 0%,
-      rgba(54, 47, 36, 0.045) 22%,
-      transparent 38%,
-      rgba(255, 255, 255, 0.36) 66%,
-      rgba(73, 65, 50, 0.09) 81%,
-      transparent 100%
-    ),
-    linear-gradient(
-      90deg,
-      transparent 69%,
-      rgba(60, 52, 40, 0.09) 73%,
-      rgba(255, 255, 255, 0.18) 80%,
-      transparent 91%
-    );
-  clip-path: polygon(0 0, 100% 1.5%, 88% 99%, 0 100%);
-  animation: paper-fold-left 13s ease-in-out infinite alternate;
-}
-.receipt__crease--right {
-  top: 2%;
-  right: 0;
-  bottom: 2.5%;
-  width: 31px;
-  background:
-    linear-gradient(
-      259deg,
-      rgba(54, 47, 36, 0.15) 0%,
-      rgba(54, 47, 36, 0.04) 22%,
-      transparent 39%,
-      rgba(255, 255, 255, 0.34) 67%,
-      rgba(73, 65, 50, 0.08) 82%,
-      transparent 100%
-    ),
-    linear-gradient(
-      270deg,
-      transparent 69%,
-      rgba(60, 52, 40, 0.085) 73%,
-      rgba(255, 255, 255, 0.17) 80%,
-      transparent 91%
-    );
-  clip-path: polygon(100% 0, 0 2%, 11% 98%, 100% 100%);
-  animation: paper-fold-right 15s ease-in-out infinite alternate;
-}
-.receipt__crease--center {
-  top: 48%;
-  left: 13%;
-  width: 75%;
-  height: 70px;
-  background:
-    linear-gradient(
-      178deg,
-      transparent 2%,
-      rgba(68, 58, 42, 0.12) 32%,
-      rgba(255, 255, 255, 0.48) 48%,
-      rgba(68, 58, 42, 0.09) 57%,
-      rgba(255, 255, 255, 0.11) 65%,
-      transparent 100%
-    ),
-    linear-gradient(90deg, transparent, rgba(62, 50, 34, 0.055), transparent);
-  clip-path: polygon(0 18%, 18% 7%, 43% 14%, 72% 0, 100% 15%, 99% 80%, 70% 100%, 41% 84%, 17% 96%, 1% 80%);
-  animation: paper-fold-center 17s ease-in-out infinite alternate;
-}
-@keyframes paper-fold-left {
-  from { opacity: 0.42; transform: translateX(0) skewY(-0.08deg); }
-  to { opacity: 0.75; transform: translateX(0.7px) skewY(0.12deg); }
-}
-@keyframes paper-fold-right {
-  from { opacity: 0.40; transform: translateX(0) skewY(0.06deg); }
-  to { opacity: 0.70; transform: translateX(-0.7px) skewY(-0.12deg); }
-}
-@keyframes paper-fold-center {
-  from { opacity: 0.38; transform: translateY(-0.5px) rotate(-0.1deg); }
-  to { opacity: 0.68; transform: translateY(0.5px) rotate(0.1deg); }
-}
 
 .receipt__header { text-align: center; }
 .receipt__brand {
@@ -613,9 +519,6 @@ a.receipt-item__action:hover { color: var(--ink); text-decoration: underline; }
     width: 11px;
     opacity: 0.2;
   }
-  .receipt__crease--left { width: 25px; }
-  .receipt__crease--right { width: 23px; }
-  .receipt__crease--center { left: 11%; width: 78%; height: 54px; }
   .receipt__serial,
   .receipt__issued { font-size: 0.5rem; }
   .receipt__nav { gap: 0.5rem 0.8rem; font-size: 0.5rem; }
@@ -641,12 +544,10 @@ a.receipt-item__action:hover { color: var(--ink); text-decoration: underline; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .receipt__crease { animation: none; }
 }
 @media print {
   body { background: #fff; }
   .ground-texture { display: none; }
-  .receipt__creases { display: none; }
   .receipt {
     width: 100%;
     max-width: none;
