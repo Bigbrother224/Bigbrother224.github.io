@@ -21,12 +21,53 @@
   var viewportHeight = window.innerHeight;
   var desktopTexture = loadTexture("assets/img/receipt-desktop.webp");
   var mobileTexture = loadTexture("assets/img/receipt-mobile.webp");
+  var foldLighting = loadTexture("assets/img/paper-fold-lighting.webp");
+  var foldPixels = null;
+  var foldWidth = 0;
+  var foldHeight = 0;
+  foldLighting.addEventListener("load", cacheFoldLighting, { once: true });
 
   function loadTexture(src) {
     var image = new Image();
     image.addEventListener("load", requestFrame, { once: true });
     image.src = src;
     return image;
+  }
+
+  function cacheFoldLighting() {
+    var map = document.createElement("canvas");
+    map.width = foldLighting.naturalWidth;
+    map.height = foldLighting.naturalHeight;
+    var mapContext = map.getContext("2d", { willReadFrequently: true });
+    try {
+      mapContext.drawImage(foldLighting, 0, 0);
+      foldPixels = mapContext.getImageData(0, 0, map.width, map.height).data;
+      foldWidth = map.width;
+      foldHeight = map.height;
+    } catch (error) {
+      foldPixels = null;
+    }
+  }
+
+  function sampleFoldLighting(u, v) {
+    if (!foldPixels || u < 0 || u > 1 || v < 0 || v > 1) return { luminance: 0.78, alpha: 0 };
+    var x = u * (foldWidth - 1);
+    var y = v * (foldHeight - 1);
+    var x0 = Math.floor(x);
+    var y0 = Math.floor(y);
+    var x1 = Math.min(foldWidth - 1, x0 + 1);
+    var y1 = Math.min(foldHeight - 1, y0 + 1);
+    var fx = x - x0;
+    var fy = y - y0;
+    function channel(ix, iy, offset) {
+      return foldPixels[(iy * foldWidth + ix) * 4 + offset] / 255;
+    }
+    function bilinear(offset) {
+      var top = channel(x0, y0, offset) * (1 - fx) + channel(x1, y0, offset) * fx;
+      var bottom = channel(x0, y1, offset) * (1 - fx) + channel(x1, y1, offset) * fx;
+      return top * (1 - fy) + bottom * fy;
+    }
+    return { luminance: bilinear(0), alpha: bilinear(3) };
   }
 
   function clamp(value, min, max) {
@@ -93,17 +134,17 @@
       + progress * 0.34;
     var phi = clamp(
       basePhi
-        + Math.sin(baseTheta * 4.7 + basePhi * 4.1) * 0.13 * Math.sin(basePhi)
-        + Math.cos(baseTheta * 8.2 - basePhi * 6.7) * 0.07 * Math.sin(basePhi),
+        + Math.sin(baseTheta * 4.7 + basePhi * 4.1) * 0.16 * Math.sin(basePhi)
+        + Math.cos(baseTheta * 8.2 - basePhi * 6.7) * 0.09 * Math.sin(basePhi),
       0,
       Math.PI
     );
-    var ridge = 0.88
-      + Math.sin(theta * 5.1 + phi * 3.7) * 0.1
-      + Math.cos(theta * 8.8 - phi * 6.2) * 0.066
-      + Math.sin(theta * 13.2 + phi * 11.4) * 0.039;
-    var pinches = Math.pow(Math.max(0, Math.sin(theta * 7.2 + phi * 5.3)), 10);
-    var surfaceRadius = radius * (ridge - pinches * 0.045);
+    var ridge = 0.91
+      + Math.sin(theta * 4.4 + phi * 3.2) * 0.074
+      + Math.cos(theta * 7.2 - phi * 5.5) * 0.043
+      + Math.sin(theta * 11.2 + phi * 9.4) * 0.024;
+    var pinches = Math.pow(Math.max(0, Math.sin(theta * 6.4 + phi * 4.8)), 12);
+    var surfaceRadius = radius * (ridge - pinches * 0.03);
     var targetX3 = Math.sin(phi) * Math.cos(theta) * surfaceRadius;
     var targetY3 = Math.cos(phi) * surfaceRadius;
     var targetZ3 = Math.sin(phi) * Math.sin(theta) * surfaceRadius;
@@ -111,6 +152,21 @@
     var perspective = cameraDistance / (cameraDistance - targetZ3);
     var targetX = centerX + targetX3 * perspective;
     var targetY = centerY + targetY3 * perspective;
+    var lightWidth = radius * 2.14;
+    var lightHeight = foldLighting.naturalWidth
+      ? lightWidth * foldLighting.naturalHeight / foldLighting.naturalWidth
+      : lightWidth;
+    var foldSample = sampleFoldLighting(
+      (targetX - (centerX - lightWidth / 2)) / lightWidth,
+      (targetY - (centerY - lightHeight / 2)) / lightHeight
+    );
+    surfaceRadius += (foldSample.luminance - 0.78) * radius * 0.55 * foldSample.alpha;
+    targetX3 = Math.sin(phi) * Math.cos(theta) * surfaceRadius;
+    targetY3 = Math.cos(phi) * surfaceRadius;
+    targetZ3 = Math.sin(phi) * Math.sin(theta) * surfaceRadius;
+    perspective = cameraDistance / (cameraDistance - targetZ3);
+    targetX = centerX + targetX3 * perspective;
+    targetY = centerY + targetY3 * perspective;
 
     // The fold travels from the receipt's torn end upward, gathering the full strip.
     var foldStart = (1 - v) * 0.44;
@@ -135,24 +191,6 @@
       wz: worldZ,
       z: worldZ
     };
-  }
-
-  function triangleShade(a, b, c, progress) {
-    var abx = b.wx - a.wx;
-    var aby = b.wy - a.wy;
-    var abz = b.wz - a.wz;
-    var acx = c.wx - a.wx;
-    var acy = c.wy - a.wy;
-    var acz = c.wz - a.wz;
-    var nx = aby * acz - abz * acy;
-    var ny = abz * acx - abx * acz;
-    var nz = abx * acy - aby * acx;
-    var length = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
-    nx /= length;
-    ny /= length;
-    nz /= length;
-    var light = Math.abs(nx * -0.28 + ny * -0.48 + nz * 0.83);
-    return clamp(progress * (0.035 + (1 - light) * 0.23), 0, 0.24);
   }
 
   function drawTriangle(image, a, b, c, progress) {
@@ -188,14 +226,9 @@
     context.clip();
     context.transform(mA, mB, mC, mD, mE, mF);
     context.drawImage(image, 0, 0);
-    var shade = triangleShade(a, b, c, progress);
-    var inkWash = smoothstep(0.18, 1, progress) * 0.86;
+    var inkWash = smoothstep(0.22, 0.9, progress) * 0.5;
     if (inkWash > 0.005) {
       context.fillStyle = "rgba(255, 255, 255, " + inkWash.toFixed(3) + ")";
-      context.fillRect(0, 0, image.naturalWidth, image.naturalHeight);
-    }
-    if (shade > 0.006) {
-      context.fillStyle = "rgba(47, 49, 54, " + shade.toFixed(3) + ")";
       context.fillRect(0, 0, image.naturalWidth, image.naturalHeight);
     }
     context.restore();
@@ -204,22 +237,32 @@
   function drawBallShadow(progress, centerX, centerY, radius) {
     var strength = smoothstep(0.2, 0.9, progress);
     if (strength < 0.01) return;
-    var shadowX = centerX + radius * 0.24;
-    var shadowY = centerY + radius * 0.74;
+    var shadowX = centerX + radius * 0.22;
+    var shadowY = centerY + radius * 0.76;
     var shadow = context.createRadialGradient(
       shadowX,
       shadowY,
-      radius * 0.08,
+      radius * 0.12,
       shadowX,
       shadowY,
-      radius * 1.42
+      radius * 1.2
     );
-    shadow.addColorStop(0, "rgba(31, 32, 35, " + (0.27 * strength).toFixed(3) + ")");
-    shadow.addColorStop(0.42, "rgba(31, 32, 35, " + (0.15 * strength).toFixed(3) + ")");
+    shadow.addColorStop(0, "rgba(31, 32, 35, " + (0.18 * strength).toFixed(3) + ")");
+    shadow.addColorStop(0.4, "rgba(31, 32, 35, " + (0.09 * strength).toFixed(3) + ")");
     shadow.addColorStop(1, "rgba(31, 32, 35, 0)");
     context.fillStyle = shadow;
     context.beginPath();
-    context.ellipse(shadowX, shadowY, radius * 1.36, radius * 0.42, -0.08, 0, Math.PI * 2);
+    context.ellipse(shadowX, shadowY, radius * 1.12, radius * 0.34, -0.1, 0, Math.PI * 2);
+    context.fill();
+
+    var contactX = centerX + radius * 0.12;
+    var contactY = centerY + radius * 0.78;
+    var contact = context.createRadialGradient(contactX, contactY, 0, contactX, contactY, radius * 0.72);
+    contact.addColorStop(0, "rgba(31, 32, 35, " + (0.13 * strength).toFixed(3) + ")");
+    contact.addColorStop(1, "rgba(31, 32, 35, 0)");
+    context.fillStyle = contact;
+    context.beginPath();
+    context.ellipse(contactX, contactY, radius * 0.72, radius * 0.18, -0.05, 0, Math.PI * 2);
     context.fill();
   }
 
@@ -235,18 +278,10 @@
     var centerX = viewportWidth * 0.5;
     var centerY = viewportHeight * 0.51;
     var radius = Math.min(130, Math.max(64, viewportWidth * 0.1));
-    var blush = smoothstep(0.16, 0.98, progress);
-    if (blush > 0.005) {
-      var backdrop = context.createLinearGradient(0, 0, viewportWidth, viewportHeight);
-      backdrop.addColorStop(0, "rgba(222, 177, 187, " + (0.94 * blush).toFixed(3) + ")");
-      backdrop.addColorStop(1, "rgba(207, 148, 163, " + (0.94 * blush).toFixed(3) + ")");
-      context.fillStyle = backdrop;
-      context.fillRect(0, 0, viewportWidth, viewportHeight);
-    }
     drawBallShadow(progress, centerX, centerY, radius);
 
-    var columns = mobileQuery.matches ? 12 : 18;
-    var rows = clamp(Math.ceil(image.naturalHeight / (mobileQuery.matches ? 46 : 42)), 64, 94);
+    var columns = mobileQuery.matches ? 16 : 22;
+    var rows = clamp(Math.ceil(image.naturalHeight / (mobileQuery.matches ? 40 : 36)), 78, 112);
     var vertices = new Array((columns + 1) * (rows + 1));
     for (var row = 0; row <= rows; row++) {
       var v = row / rows;
@@ -276,6 +311,18 @@
       var triangle = triangles[i];
       drawTriangle(image, triangle.a, triangle.b, triangle.c, progress);
     }
+    if (foldLighting.complete && foldLighting.naturalWidth && progress > 0.01) {
+      var lightStrength = smoothstep(0.24, 0.92, progress) * 0.62;
+      var lightWidth = radius * 2.14;
+      var lightHeight = lightWidth * foldLighting.naturalHeight / foldLighting.naturalWidth;
+      context.save();
+      context.globalCompositeOperation = "multiply";
+      context.globalAlpha = lightStrength;
+      context.filter = "blur(0.35px)";
+      context.drawImage(foldLighting, centerX - lightWidth / 2, centerY - lightHeight / 2, lightWidth, lightHeight);
+      context.restore();
+    }
+    context.globalAlpha = 1;
     return true;
   }
 
